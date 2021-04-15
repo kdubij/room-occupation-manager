@@ -1,0 +1,7 @@
+version: '3'
+services:
+  room-occupation-manager:
+    build: ./target/docker
+    container_name: "room-occupation-manager"
+    ports:
+      - 8080:8080
