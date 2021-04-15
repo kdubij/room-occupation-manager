@@ -1,5 +1,6 @@
-package org.kdubij.roommanager
+package org.kdubij.roommanager.occupation
 
+import org.kdubij.roommanager.occupation.OccupationResult
 import spock.lang.Specification
 
 class OccupationResultTest extends Specification {

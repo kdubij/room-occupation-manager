@@ -1,21 +1,20 @@
-package org.kdubij.roommanager;
+package org.kdubij.roommanager.occupation;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.List;
 
 @Getter
 @ToString
 @EqualsAndHashCode
-public class OccupationResult {
-    private final Integer premiumRoomUsage;
-    private final Double premiumRoomPrice;
-    private final Integer economyRoomUsage;
-    private final Double economyRoomPrice;
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+class OccupationResult {
+    private Integer premiumRoomUsage;
+    private Double premiumRoomPrice;
+    private Integer economyRoomUsage;
+    private Double economyRoomPrice;
 
-    public OccupationResult(List<Double> premiumPrices, List<Double> economyPrices) {
+    OccupationResult(List<Double> premiumPrices, List<Double> economyPrices) {
         this.premiumRoomUsage = premiumPrices.size();
         this.premiumRoomPrice = sumPrices(premiumPrices);
         this.economyRoomUsage = economyPrices.size();

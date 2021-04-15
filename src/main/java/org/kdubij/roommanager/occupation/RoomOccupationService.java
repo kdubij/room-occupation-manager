@@ -1,17 +1,24 @@
-package org.kdubij.roommanager;
+package org.kdubij.roommanager.occupation;
+
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.kdubij.roommanager.guests.PotentialGuestRetriever;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+@Slf4j
+@AllArgsConstructor
 class RoomOccupationService {
     private static final int MIN_PREMIUM_ROOM_PRICE = 100;
-    private final List<Double> potentialGuests = List.of(23d, 45d, 155d, 374d, 22d, 99.99d, 100d, 101d, 115d, 209d);
+    private final PotentialGuestRetriever potentialGuestRetriever;
 
     OccupationResult occupy(Integer freePremiumRooms, Integer freeEconomyRooms) {
-        var occupiedPremiumRoomsGuests = findPremiumRoomsGuests(freePremiumRooms);
-        var potentialEconomyRoomsGuests = findPotentialEconomyRoomGuests();
+        var sortedPotentialGuests = retrieveSortedPotentialGuests();
+        var occupiedPremiumRoomsGuests = findPremiumRoomsGuests(freePremiumRooms, sortedPotentialGuests);
+        var potentialEconomyRoomsGuests = findPotentialEconomyRoomGuests(sortedPotentialGuests);
 
         if (isPreferenceUpgradePossible(freePremiumRooms, freeEconomyRooms, occupiedPremiumRoomsGuests.size(), potentialEconomyRoomsGuests.size())) {
             doPreferenceUpgrade(freePremiumRooms, occupiedPremiumRoomsGuests, potentialEconomyRoomsGuests);
@@ -19,6 +26,15 @@ class RoomOccupationService {
         var economyRoomsGuests = occupyFreeRooms(freeEconomyRooms, potentialEconomyRoomsGuests);
 
         return new OccupationResult(occupiedPremiumRoomsGuests, economyRoomsGuests);
+    }
+
+    private List<Double> retrieveSortedPotentialGuests() {
+        var potentialGuests = potentialGuestRetriever.retrieve();
+        log.info("[OCCUPATION] Retrieved potential guests {potentialGuests={}}", potentialGuests);
+        return potentialGuests
+                .stream()
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList());
     }
 
     private List<Double> occupyFreeRooms(Integer economyRooms, List<Double> potentialEconomyGuests) {
@@ -30,20 +46,19 @@ class RoomOccupationService {
     private void doPreferenceUpgrade(Integer premiumRooms, List<Double> occupiedPremiumRooms, List<Double> potentialEconomyGuests) {
         var freePremiumRooms = premiumRooms - occupiedPremiumRooms.size();
         var upgradedRooms = occupyFreeRooms(freePremiumRooms, potentialEconomyGuests);
+        log.info("[OCCUPATION] Preference upgrade done {upgradedRooms={}}", upgradedRooms);
         potentialEconomyGuests.removeAll(upgradedRooms);
         occupiedPremiumRooms.addAll(upgradedRooms);
     }
 
-    private List<Double> findPotentialEconomyRoomGuests() {
-        return potentialGuests.stream()
-                .sorted(Comparator.reverseOrder())
+    private List<Double> findPotentialEconomyRoomGuests(List<Double> sortedPotentialGuests) {
+        return sortedPotentialGuests.stream()
                 .filter(Predicate.not(this::isPremiumRoomPriceReached))
                 .collect(Collectors.toList());
     }
 
-    private List<Double> findPremiumRoomsGuests(Integer premiumRooms) {
-        return potentialGuests.stream()
-                .sorted(Comparator.reverseOrder())
+    private List<Double> findPremiumRoomsGuests(Integer premiumRooms, List<Double> sortedPotentialGuests) {
+        return sortedPotentialGuests.stream()
                 .filter(this::isPremiumRoomPriceReached)
                 .limit(premiumRooms)
                 .collect(Collectors.toList());
@@ -53,15 +68,15 @@ class RoomOccupationService {
         return guestPrice >= MIN_PREMIUM_ROOM_PRICE;
     }
 
-    private boolean isPreferenceUpgradePossible(Integer premiumRooms, Integer economyRooms, int premiumNormalPriceGuests, int potentialEconomyGuests) {
+    private boolean isPreferenceUpgradePossible(int premiumRooms, int economyRooms, int premiumNormalPriceGuests, int potentialEconomyGuests) {
         return areAllEconomyRoomsOccupied(economyRooms, potentialEconomyGuests) && areAnyPremiumRoomsFree(premiumRooms, premiumNormalPriceGuests);
     }
 
-    private boolean areAnyPremiumRoomsFree(Integer premiumRooms, int occupiedPremiumRooms) {
+    private boolean areAnyPremiumRoomsFree(int premiumRooms, int occupiedPremiumRooms) {
         return occupiedPremiumRooms < premiumRooms;
     }
 
-    private boolean areAllEconomyRoomsOccupied(Integer economyRooms, int potentialEconomyGuests) {
+    private boolean areAllEconomyRoomsOccupied(int economyRooms, int potentialEconomyGuests) {
         return potentialEconomyGuests > economyRooms;
     }
 }
